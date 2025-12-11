@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabaseClient'
+// app/test-supabase/page.tsx
+import { supabase } from '../../../lib/supabaseClient'
 
 export default async function TestSupabasePage() {
   const { data, error } = await supabase
