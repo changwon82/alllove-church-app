@@ -768,6 +768,7 @@ function SignupModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         throw new Error("사용자 계정이 생성되지 않았습니다.")
       }
 
+      // 2단계: 프로필 생성 (API 라우트를 통해 RLS 우회)
       const profileResponse = await fetch("/api/create-profile", {
         method: "POST",
         headers: {
@@ -775,7 +776,7 @@ function SignupModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         },
         body: JSON.stringify({
           user_id: user.id,
-          name: name.trim(),
+          full_name: name.trim(),
           username: username.trim().toLowerCase(),
           email: email.trim() || null,
           role: "user",
@@ -786,6 +787,7 @@ function SignupModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       const profileResult = await profileResponse.json()
 
       if (!profileResponse.ok || !profileResult.success) {
+        console.error("프로필 생성 에러:", profileResult)
         throw new Error(
           `프로필 생성 중 오류가 발생했습니다: ${profileResult.error || "알 수 없는 오류"}`
         )

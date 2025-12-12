@@ -32,12 +32,12 @@ export default function Sidebar({ isOpen, onClose, isDesktop = false }: SidebarP
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('name, role')
+          .select('full_name, role')
           .eq('user_id', userData.user.id)
           .maybeSingle()
 
         if (profile) {
-          setUserName(profile.name)
+          setUserName(profile.full_name)
           setUserRole(profile.role)
         }
       } catch (err) {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type Profile = {
-  name: string | null;
+  full_name: string | null;
   email: string | null;
   position: string | null;
   departments: string[] | null;
@@ -24,16 +24,7 @@ export default function MyPage() {
       setError(null);
       setLoading(true);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) {
-        setError("사용자 정보를 불러오는 중 오류가 발생했어요.");
-        setLoading(false);
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         router.replace("/login");
@@ -42,16 +33,45 @@ export default function MyPage() {
 
       setUserEmail(user.email ?? null);
 
-      const { data, error: profileError } = await supabase
+      // 프로필 조회
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("name, email, position, departments, role")
+        .select("*")
         .eq("id", user.id)
         .maybeSingle();
 
       if (profileError) {
         setError("프로필을 불러오는 중 문제가 발생했어요.");
+        setLoading(false);
+        return;
+      }
+
+      // 없으면 자동 생성
+      if (!profile) {
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user.id,
+            email: user.email,
+            role: "member",
+          });
+
+        if (insertError) {
+          setError("프로필 생성 중 오류가 발생했어요.");
+          setLoading(false);
+          return;
+        }
+
+        // 생성 후 다시 조회
+        const { data: newProfile } = await supabase
+          .from("profiles")
+          .select("full_name, email, position, departments, role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        setProfile(newProfile);
       } else {
-        setProfile(data);
+        setProfile(profile);
       }
 
       setLoading(false);
@@ -154,7 +174,7 @@ export default function MyPage() {
               }}
             >
               <span style={{ color: "#6b7280", fontWeight: 600, fontSize: "14px" }}>이름</span>
-              <span style={{ color: "#111827", fontSize: "15px", fontWeight: 700 }}>{profile.name || "-"}</span>
+              <span style={{ color: "#111827", fontSize: "15px", fontWeight: 700 }}>{profile.full_name || "-"}</span>
 
               <span style={{ color: "#6b7280", fontWeight: 600, fontSize: "14px" }}>이메일</span>
               <span style={{ color: "#111827", fontSize: "15px" }}>{emailText}</span>

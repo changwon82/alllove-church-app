@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { user_id, name, username, email, role } = body
+    const { user_id, full_name, username, email, role } = body
 
     // 필수 필드 검증
     if (!user_id) {
@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 기존 프로필 확인
+    // 기존 프로필 확인 (id로 조회)
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
       .select('*')
-      .eq('user_id', user_id)
+      .eq('id', user_id)
       .maybeSingle()
 
     let result
@@ -56,13 +56,13 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('profiles')
         .update({
-          name: name || existingProfile.name || null,
+          full_name: full_name || existingProfile.full_name || null,
           username: username || existingProfile.username || null,
           email: email || existingProfile.email || null,
           role: role || existingProfile.role || 'user',
           approved: role === 'admin' ? true : (existingProfile.approved ?? false), // 관리자로 변경 시 자동 승인
         })
-        .eq('user_id', user_id)
+        .eq('id', user_id)
         .select()
         .single()
 
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabaseAdmin
         .from('profiles')
         .insert({
-          user_id,
-          name: name || null,
+          id: user_id,
+          full_name: full_name || null,
           username: username || null,
           email: email || null,
           role: role || 'user',

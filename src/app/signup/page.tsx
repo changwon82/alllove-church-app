@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,15 +18,11 @@ export default function SignupPage() {
 
   // 카운트다운 타이머
   useEffect(() => {
-    if (cooldownSeconds === null || cooldownSeconds <= 0) {
-      return;
-    }
+    if (cooldownSeconds === null || cooldownSeconds <= 0) return;
 
     const timer = setInterval(() => {
       setCooldownSeconds((prev) => {
-        if (prev === null || prev <= 1) {
-          return null;
-        }
+        if (prev === null || prev <= 1) return null;
         return prev - 1;
       });
     }, 1000);
@@ -37,57 +33,56 @@ export default function SignupPage() {
   // 에러 메시지를 한국어로 변환하는 함수
   const translateError = (errorMessage: string): string => {
     const lowerMessage = errorMessage.toLowerCase();
-    
+
     // Rate limiting 에러 처리
     if (lowerMessage.includes("for security purposes") || lowerMessage.includes("rate limit")) {
-      // 대기 시간 추출 (예: "after 31 seconds"에서 31 추출)
       const secondsMatch = errorMessage.match(/(\d+)\s*seconds?/i);
       const seconds = secondsMatch ? parseInt(secondsMatch[1]) : null;
-      
+
       if (seconds) {
         setCooldownSeconds(seconds);
         return `보안을 위해 ${seconds}초 후에 다시 시도해주세요. 잠시만 기다려주세요.`;
       }
       return "보안을 위해 잠시 후에 다시 시도해주세요.";
     }
-    
-    // 다른 일반적인 에러 메시지 번역
-    if (lowerMessage.includes("user already registered") || 
-        lowerMessage.includes("already exists") ||
-        lowerMessage.includes("duplicate key") ||
-        lowerMessage.includes("unique constraint")) {
+
+    if (
+      lowerMessage.includes("user already registered") ||
+      lowerMessage.includes("already exists") ||
+      lowerMessage.includes("duplicate key") ||
+      lowerMessage.includes("unique constraint")
+    ) {
       return "이미 등록된 이메일입니다. 로그인을 시도해주세요.";
     }
-    
+
     if (lowerMessage.includes("invalid email") || lowerMessage.includes("email format")) {
       return "올바른 이메일 형식이 아닙니다.";
     }
-    
+
     if (lowerMessage.includes("password") && lowerMessage.includes("weak")) {
       return "비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.";
     }
-    
+
     if (lowerMessage.includes("password") && lowerMessage.includes("length")) {
       return "비밀번호는 최소 6자 이상이어야 합니다.";
     }
-    
+
     if (lowerMessage.includes("email not confirmed") || lowerMessage.includes("email confirmation")) {
       return "이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.";
     }
-    
+
     if (lowerMessage.includes("foreign key") || lowerMessage.includes("constraint")) {
       return "데이터베이스 제약 조건 오류가 발생했습니다. 관리자에게 문의해주세요.";
     }
-    
+
     if (lowerMessage.includes("null value") || lowerMessage.includes("not null")) {
       return "필수 정보가 누락되었습니다. 모든 필드를 입력해주세요.";
     }
-    
+
     if (lowerMessage.includes("network") || lowerMessage.includes("connection")) {
       return "네트워크 연결 오류가 발생했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.";
     }
-    
-    // 기본값: 원본 메시지 반환
+
     return errorMessage;
   };
 
@@ -97,6 +92,7 @@ export default function SignupPage() {
     setSuccess(null);
     setCooldownSeconds(null);
 
+    // 기본 검증
     if (password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.");
       return;
@@ -107,19 +103,16 @@ export default function SignupPage() {
       return;
     }
 
-    // 이름 필수 체크
-    if (!name || name.trim().length === 0) {
+    if (!name.trim()) {
       setError("이름을 입력해주세요.");
       return;
     }
 
-    // 아이디 필수 체크
-    if (!username || username.trim().length === 0) {
+    if (!username.trim()) {
       setError("아이디를 입력해주세요.");
       return;
     }
 
-    // 아이디 유효성 검사 (영문, 숫자, 언더스코어, 하이픈만 허용)
     const usernameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!usernameRegex.test(username.trim())) {
       setError("아이디는 영문, 숫자, 언더스코어(_), 하이픈(-)만 사용할 수 있습니다.");
@@ -138,9 +131,9 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+
     try {
-      // 1단계: 사용자 계정 생성 (이메일 인증 없이)
-      // Supabase 대시보드에서 이메일 인증을 비활성화해야 합니다
+      // 1단계: Supabase Auth에 이메일/비밀번호로 계정 생성
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: signupEmail,
         password,
@@ -155,7 +148,6 @@ export default function SignupPage() {
       }
 
       const user = data?.user;
-
       if (!user) {
         throw new Error("사용자 계정이 생성되지 않았습니다. 이메일 인증이 필요할 수 있습니다.");
       }
@@ -168,11 +160,11 @@ export default function SignupPage() {
         },
         body: JSON.stringify({
           user_id: user.id,
-          name: name.trim(),
-          username: username.trim().toLowerCase(), // 사용자 아이디 저장
-          email: email.trim() || null, // 선택적 이메일 저장
+          full_name: name.trim(),
+          username: username.trim().toLowerCase(),
+          email: email.trim() || null,
           role: "user",
-          approved: false, // 관리자 승인 대기 상태
+          approved: false,
         }),
       });
 
@@ -180,12 +172,8 @@ export default function SignupPage() {
 
       if (!profileResponse.ok || !profileResult.success) {
         console.error("프로필 생성 에러:", profileResult);
-        
-        // 사용자 계정은 생성되었지만 프로필 생성에 실패한 경우
-        // 사용자에게 알려주고 관리자에게 문의하도록 안내
         throw new Error(
-          `프로필 생성 중 오류가 발생했습니다: ${profileResult.error || "알 수 없는 오류"}. ` +
-          `계정은 생성되었지만 프로필이 생성되지 않았습니다. 관리자에게 문의해주세요.`
+          `프로필 생성 중 오류가 발생했습니다: ${profileResult.error || "알 수 없는 오류"}`
         );
       }
 
@@ -195,26 +183,38 @@ export default function SignupPage() {
       }, 3000);
     } catch (err: any) {
       let message = "회원가입 중 오류가 발생했습니다.";
-      
+
       if (err) {
-        // Supabase 에러 객체 처리
+        // 에러 메시지 추출
         if (err.message) {
           message = translateError(err.message);
         } else if (typeof err === "string") {
           message = translateError(err);
         } else if (err.error?.message) {
           message = translateError(err.error.message);
+        } else if (err.code) {
+          // 코드만 있는 경우
+          message = `오류가 발생했습니다. (코드: ${err.code})`;
+        } else {
+          // 빈 객체나 알 수 없는 에러
+          const errorStr = JSON.stringify(err);
+          if (errorStr !== "{}") {
+            message = `오류가 발생했습니다: ${errorStr}`;
+          } else {
+            message = "프로필 생성 중 오류가 발생했습니다. RLS 정책을 확인하거나 관리자에게 문의해주세요.";
+          }
         }
-        
-        // 개발 환경에서는 더 자세한 에러 정보 표시
+
         if (process.env.NODE_ENV === "development") {
           console.error("전체 에러 객체:", err);
+          console.error("에러 타입:", typeof err);
+          console.error("에러 키:", Object.keys(err || {}));
           if (err.code) {
             message += ` (코드: ${err.code})`;
           }
         }
       }
-      
+
       setError(message);
     } finally {
       setLoading(false);
@@ -251,6 +251,7 @@ export default function SignupPage() {
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* 이름 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="name" style={{ fontSize: "14px", fontWeight: 600 }}>
               이름 <span style={{ color: "#dc2626" }}>*</span>
@@ -264,13 +265,14 @@ export default function SignupPage() {
               placeholder="홍길동"
               style={{
                 padding: "12px 14px",
-                borderRadius: "10px",
+                borderRadius: 10,
                 border: "1px solid #e5e7eb",
-                fontSize: "14px",
+                fontSize: 14,
               }}
             />
           </div>
 
+          {/* 아이디 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="username" style={{ fontSize: "14px", fontWeight: 600 }}>
               아이디 <span style={{ color: "#dc2626" }}>*</span>
@@ -284,9 +286,9 @@ export default function SignupPage() {
               placeholder="honggildong"
               style={{
                 padding: "12px 14px",
-                borderRadius: "10px",
+                borderRadius: 10,
                 border: "1px solid #e5e7eb",
-                fontSize: "14px",
+                fontSize: 14,
               }}
             />
             <span style={{ fontSize: "12px", color: "#6b7280" }}>
@@ -294,6 +296,7 @@ export default function SignupPage() {
             </span>
           </div>
 
+          {/* 비밀번호 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="password" style={{ fontSize: "14px", fontWeight: 600 }}>
               비밀번호 <span style={{ color: "#dc2626" }}>*</span>
@@ -308,13 +311,14 @@ export default function SignupPage() {
               placeholder="******"
               style={{
                 padding: "12px 14px",
-                borderRadius: "10px",
+                borderRadius: 10,
                 border: "1px solid #e5e7eb",
-                fontSize: "14px",
+                fontSize: 14,
               }}
             />
           </div>
 
+          {/* 비밀번호 확인 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="confirmPassword" style={{ fontSize: "14px", fontWeight: 600 }}>
               비밀번호 확인 <span style={{ color: "#dc2626" }}>*</span>
@@ -329,13 +333,14 @@ export default function SignupPage() {
               placeholder="******"
               style={{
                 padding: "12px 14px",
-                borderRadius: "10px",
+                borderRadius: 10,
                 border: "1px solid #e5e7eb",
-                fontSize: "14px",
+                fontSize: 14,
               }}
             />
           </div>
 
+          {/* 이메일 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label htmlFor="email" style={{ fontSize: "14px", fontWeight: 600 }}>
               이메일 (선택사항)
@@ -348,9 +353,9 @@ export default function SignupPage() {
               placeholder="you@example.com"
               style={{
                 padding: "12px 14px",
-                borderRadius: "10px",
+                borderRadius: 10,
                 border: "1px solid #e5e7eb",
-                fontSize: "14px",
+                fontSize: 14,
               }}
             />
             <span style={{ fontSize: "12px", color: "#6b7280" }}>
@@ -358,6 +363,7 @@ export default function SignupPage() {
             </span>
           </div>
 
+          {/* 메시지 영역 */}
           {success && (
             <div
               style={{
@@ -365,8 +371,8 @@ export default function SignupPage() {
                 color: "#166534",
                 border: "1px solid #bbf7d0",
                 padding: "10px 12px",
-                borderRadius: "10px",
-                fontSize: "13px",
+                borderRadius: 10,
+                fontSize: 13,
               }}
             >
               {success}
@@ -380,14 +386,15 @@ export default function SignupPage() {
                 color: "#b91c1c",
                 border: "1px solid #fecaca",
                 padding: "10px 12px",
-                borderRadius: "10px",
-                fontSize: "13px",
-                lineHeight: "1.5",
+                borderRadius: 10,
+                fontSize: 13,
+                lineHeight: 1.5,
+                whiteSpace: "pre-line",
               }}
             >
               {error}
               {cooldownSeconds !== null && cooldownSeconds > 0 && (
-                <div style={{ marginTop: "8px", fontSize: "12px", opacity: 0.8 }}>
+                <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8 }}>
                   ⏱️ {cooldownSeconds}초 후에 다시 시도할 수 있습니다.
                 </div>
               )}
@@ -398,14 +405,14 @@ export default function SignupPage() {
             type="submit"
             disabled={loading}
             style={{
-              marginTop: "4px",
-              padding: "14px",
-              borderRadius: "12px",
+              marginTop: 4,
+              padding: 14,
+              borderRadius: 12,
               border: "none",
               backgroundColor: loading ? "#9ca3af" : "#111827",
               color: "#fff",
               fontWeight: 700,
-              fontSize: "15px",
+              fontSize: 15,
               cursor: loading ? "not-allowed" : "pointer",
               transition: "background-color 0.2s ease",
             }}

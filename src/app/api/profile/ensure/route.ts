@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       .insert({
         user_id: userId,
         email: email || null,
-        name: null,
+        full_name: null,
         role: "user", // 기본값
         position: "성도",
         departments: null,

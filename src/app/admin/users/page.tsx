@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 type Profile = {
   id: string;
-  name: string | null;
+  full_name: string | null;
   email: string | null;
   position: string | null;
   role: string | null;
@@ -84,8 +84,8 @@ export default function UsersManagementPage() {
       // 모든 프로필 목록 가져오기
       const { data: allProfiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, name, email, position, role, departments, approved")
-        .order("name", { ascending: true, nullsFirst: false });
+        .select("id, full_name, email, position, role, departments, approved")
+        .order("full_name", { ascending: true, nullsFirst: false });
 
       if (profilesError) {
         setError(profilesError.message);
@@ -98,7 +98,7 @@ export default function UsersManagementPage() {
         (p) => ({
           ...p,
           approved: p.approved ?? false,
-          editingName: p.name || "",
+          editingName: p.full_name || "",
           editingEmail: p.email || "",
           editingPosition: p.position || "성도",
           editingRole: p.role || "user",
@@ -141,7 +141,7 @@ export default function UsersManagementPage() {
     const { error: updateError } = await supabase
       .from("profiles")
         .update({
-          name: profile.editingName || null,
+          full_name: profile.editingName || null,
           email: profile.editingEmail || null,
           position: profile.editingPosition,
           role: profile.editingRole,
@@ -167,7 +167,7 @@ export default function UsersManagementPage() {
         p.id === profileId
           ? {
               ...p,
-              name: profile.editingName || null,
+              full_name: profile.editingName || null,
               email: profile.editingEmail || null,
               position: profile.editingPosition,
               role: profile.editingRole,
@@ -226,7 +226,7 @@ export default function UsersManagementPage() {
 
     // 확인 대화상자
     const confirmed = window.confirm(
-      `정말로 "${profile.name || profile.email || "이 사용자"}"를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`
+      `정말로 "${profile.full_name || profile.email || "이 사용자"}"를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`
     );
 
     if (!confirmed) return;

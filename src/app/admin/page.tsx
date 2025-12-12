@@ -9,7 +9,7 @@ type Profile = {
   id: string;
   user_id: string;
   email: string | null;
-  name: string | null;
+  full_name: string | null;
   role: string | null;
   position: string | null;
   departments: string[] | null;
@@ -35,39 +35,50 @@ export default function AdminPage() {
         setError(null);
 
         // 1) 현재 로그인 유저 가져오기
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
 
-        if (userError) throw userError;
         if (!user) {
           router.replace("/login");
           return;
         }
 
-        // 2) 서버 API에 "프로필 보장(ensure)" 요청
-        const res = await fetch("/api/profile/ensure", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            email: user.email,
-          }),
-        });
+        // 프로필 조회
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.message ?? "프로필 확인 중 오류가 발생했습니다.");
+        // 없으면 자동 생성
+        let finalProfile = profile;
+        if (!profile) {
+          const { error: insertError } = await supabase
+            .from("profiles")
+            .insert({
+              id: user.id,
+              email: user.email,
+              role: "member",
+            });
+
+          if (insertError) {
+            throw new Error("프로필 생성 중 오류가 발생했습니다.");
+          }
+
+          // 생성 후 다시 조회
+          const { data: newProfile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          finalProfile = newProfile;
         }
 
-        const data = (await res.json()) as { profile: Profile };
-
-        if (!cancelled) {
-          setProfile(data.profile);
+        if (!cancelled && finalProfile) {
+          setProfile(finalProfile as Profile);
 
           // 관리자 또는 스태프인 경우 통계 데이터 가져오기
-          if (data.profile.role === "admin" || data.profile.role === "staff") {
+          if (finalProfile.role === "admin" || finalProfile.role === "staff") {
             const [usersResult, attendanceResult, todayResult] = await Promise.all([
               supabase.from("profiles").select("id", { count: "exact", head: true }),
               supabase.from("attendance").select("id", { count: "exact", head: true }),
@@ -310,7 +321,7 @@ export default function AdminPage() {
             관리자 대시보드
           </h1>
           <p style={{ fontSize: 16, opacity: 0.95, marginBottom: 4 }}>
-            {profile.name || profile.email} 님, 환영합니다.
+            {profile.full_name || profile.email} 님, 환영합니다.
           </p>
           <p style={{ fontSize: 14, opacity: 0.85 }}>
             시스템 관리 및 통계를 확인할 수 있습니다.
