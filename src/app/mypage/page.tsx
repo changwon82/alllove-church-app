@@ -40,7 +40,7 @@ export default function MyPage() {
         return;
       }
 
-      setUserEmail(user.email);
+      setUserEmail(user.email ?? null);
 
       const { data, error: profileError } = await supabase
         .from("profiles")
